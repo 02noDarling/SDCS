@@ -1,0 +1,31 @@
+# compose.yaml
+version: '3.8'
+
+services:
+  cache-server-9527:
+    build: .
+    ports:
+      - "9527:9527"
+    command: ["--port", "9527"]
+    networks:
+      - sdcnet
+
+  cache-server-9528:
+    build: .
+    ports:
+      - "9528:9528"
+    command: ["--port", "9528"]
+    networks:
+      - sdcnet
+
+  cache-server-9529:
+    build: .
+    ports:
+      - "9529:9529"
+    command: ["--port", "9529"]
+    networks:
+      - sdcnet
+
+networks:
+  sdcnet:
+    driver: bridge

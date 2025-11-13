@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, abort
 import argparse
 import requests
 import json
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 
 app = Flask(__name__)
 
@@ -17,51 +19,93 @@ def write_data():
         if not isinstance(data, dict):
             abort(400, description="JSON body must be an object")
         
-        for port in ports:
-            BASE_URL = f"http://127.0.0.1:{port}/init_write_data"
-            response = requests.post(
-                BASE_URL,
-                headers={'Content-Type': 'application/json'},
-                data=json.dumps(data)
-            )
-            if response.status_code != 204:
-                abort(400, description={response.text})
+        # for port in ports:
+        #     BASE_URL = f"http://127.0.0.1:{port}/init_write_data"
+        #     response = requests.post(
+        #         BASE_URL,
+        #         headers={'Content-Type': 'application/json'},
+        #         data=json.dumps(data)
+        #     )
+        #     if response.status_code != 204:
+        #         abort(400, description={response.text})
+
+        for item in data:
+            key, value = item, data[item]
+        now = datetime.now()
+        data_store[key] = [value, now]     
+        print(data_store[key])
         return '', 200  
     except Exception as e:
         abort(400, description=str(e))
         
-@app.route('/init_write_data', methods=['POST'])
-def init_write_data():
-    if not request.is_json:
-        abort(400, description="Content-Type must be application/json")
-    try:
-        data = request.get_json()
-        if not isinstance(data, dict):
-            abort(400, description="JSON body must be an object")
+# @app.route('/init_write_data', methods=['POST'])
+# def init_write_data():
+#     if not request.is_json:
+#         abort(400, description="Content-Type must be application/json")
+#     try:
+#         data = request.get_json()
+#         if not isinstance(data, dict):
+#             abort(400, description="JSON body must be an object")
         
-        data_store.update(data)
-        return '', 204  
-    except Exception as e:
-        abort(400, description=str(e))
+#         data_store.update(data)
+#         return '', 204  
+#     except Exception as e:
+#         abort(400, description=str(e))
 
 @app.route('/<key>', methods=['GET'])
 def read_data(key):
-    if key in data_store:
-        return jsonify({key: data_store[key]})
+    value = ""
+    max_time = datetime.min 
+    for port in ports:
+        if port == args.port:
+            if key in data_store:
+                store_value, time = data_store[key]
+                if time > max_time:
+                    max_time = time
+                    value = store_value  
+        else:
+            BASE_URL = f"http://127.0.0.1:{port}/init_read_data/{key}"
+            response = requests.get(
+                BASE_URL,
+                headers={'Content-Type': 'application/json'},
+            )
+            content = response.json() 
+            if content != "":
+                store_value, time = content
+                time = parsedate_to_datetime(time).replace(tzinfo=None)
+                if time > max_time:
+                    max_time = time
+                    value = store_value 
+
+    if max_time != datetime.min:
+        return jsonify({key: value})
     else:
         return '', 404
+
+@app.route('/init_read_data/<key>', methods=['GET'])
+def init_read_data(key):
+    if key in data_store:
+        return jsonify(data_store[key])
+    else:
+        return jsonify('')
 
 @app.route('/<key>', methods=['DELETE'])
 def delete_data(key):
     flag = False
-    if key in data_store:
-        flag = True
     for port in ports:
-        BASE_URL = f"http://127.0.0.1:{port}/init_delete_data/{key}"
-        response = requests.delete(
-            BASE_URL,
-            headers={'Content-Type': 'application/json'}
-        )
+        if port == args.port:
+            if key in data_store:
+                flag = True
+                data_store.pop()
+        else:
+            BASE_URL = f"http://127.0.0.1:{port}/init_delete_data/{key}"
+            response = requests.delete(
+                BASE_URL,
+                headers={'Content-Type': 'application/json'}
+            )
+            content = response.json()
+            if content:
+                flag = True
     if flag:
         return jsonify(1)
     else:
@@ -71,8 +115,10 @@ def delete_data(key):
 def init_delete_data(key):
     if key in data_store:
         data_store.pop(key)
-    return '', 200
-
+        return jsonify(True)   
+    else:
+        return jsonify(False)
+    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run the key-value store service.")
     parser.add_argument('--port', type=int, default=5000, help="Port to listen on (default: 5000)")
