@@ -7,12 +7,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY . /app
 
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY api.py .
+RUN pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 EXPOSE 9527 9528 9529
 
-ENTRYPOINT ["python3", "api.py"]
+ENTRYPOINT ["python3", "app.py"]

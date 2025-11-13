@@ -64,7 +64,7 @@ def read_data(key):
                     max_time = time
                     value = store_value  
         else:
-            BASE_URL = f"http://127.0.0.1:{port}/init_read_data/{key}"
+            BASE_URL = f"http://cache-server-{port}:{port}/init_read_data/{key}"
             response = requests.get(
                 BASE_URL,
                 headers={'Content-Type': 'application/json'},
@@ -98,7 +98,7 @@ def delete_data(key):
                 flag = True
                 data_store.pop()
         else:
-            BASE_URL = f"http://127.0.0.1:{port}/init_delete_data/{key}"
+            BASE_URL = f"http://cache-server-{port}:{port}/init_delete_data/{key}"
             response = requests.delete(
                 BASE_URL,
                 headers={'Content-Type': 'application/json'}
@@ -124,4 +124,4 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=5000, help="Port to listen on (default: 5000)")
 
     args = parser.parse_args()
-    app.run(host='127.0.0.1', port=args.port, debug=True)
+    app.run(host='0.0.0.0', port=args.port, debug=True)
